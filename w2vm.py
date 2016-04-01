@@ -33,6 +33,7 @@ import nltk
 import pandas as pd
 
 
+data_index = 0
 def build_dataset(words, vocabulary_size):
   count = [['UNK', -1]]
   count.extend(collections.Counter(words).most_common(vocabulary_size - 1))
@@ -57,7 +58,7 @@ def build_dataset(words, vocabulary_size):
 
 
 # Step 3: Function to generate a training batch for the skip-gram model.
-def generate_batch(batch_size, num_skips, skip_window):
+def generate_batch(data, batch_size, num_skips, skip_window):
   global data_index
   assert batch_size % num_skips == 0
   assert num_skips <= 2 * skip_window
@@ -114,8 +115,7 @@ def get_embeddings():
   del words  # Hint to reduce memory.
   print('Most common words (+UNK)', count[:5])
   print('Sample data', data[:10])
-  data_index = 0
-  batch, labels = generate_batch(batch_size=8, num_skips=2, skip_window=1)
+  batch, labels = generate_batch(data, batch_size=8, num_skips=2, skip_window=1)
   for i in range(8):
     print(batch[i], '->', labels[i, 0])
     print(reverse_dictionary[batch[i]], '->', reverse_dictionary[labels[i, 0]])
@@ -170,7 +170,7 @@ def get_embeddings():
     print("Initialized")
     average_loss = 0
     for step in xrange(num_steps):
-      batch_inputs, batch_labels = generate_batch(
+      batch_inputs, batch_labels = generate_batch(data, 
           batch_size, num_skips, skip_window)
       feed_dict = {train_inputs : batch_inputs, train_labels : batch_labels}
       # We perform one update step by evaluating the optimizer op (including it
@@ -195,7 +195,8 @@ def get_embeddings():
             close_word = reverse_dictionary.get(nearest[k],'') #snl
             log_str = "%s %s," % (log_str, close_word)
           print(log_str)
-  return normalized_embeddings.eval()
+    final_embeddings = normalized_embeddings.eval()
+  return final_embeddings, reverse_dictionary
 
 from sklearn.manifold import TSNE
 #%matplotlib inline
@@ -215,13 +216,13 @@ def plot_with_labels(low_dim_embs, labels, filename='tsne.png'):
   plt.savefig(filename)
 
 
-overwrite_dump = False
+overwrite_dump = True
 dump_file ='vectorfile.pkl'
 if os.path.isfile(dump_file) and not overwrite_dump:
-  (final_embeddings, reverse_dictionary) = read_dump_pickle(dump_file)
+  final_embeddings, reverse_dictionary = read_dump_pickle(dump_file)
 else:
   num_steps = 100001
-  final_embeddings = get_embeddings()
+  final_embeddings, reverse_dictionary = get_embeddings()
   dump_pickle(dump_file, final_embeddings, reverse_dictionary)
   
 # Step 6: Visualize the embeddings.
